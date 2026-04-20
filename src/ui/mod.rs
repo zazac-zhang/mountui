@@ -67,6 +67,7 @@ fn render_status_bar(frame: &mut Frame, area: Rect, app: &App) {
     let style = match app.mode {
         Mode::Search => Style::default().fg(Color::Yellow),
         Mode::Form => Style::default().fg(Color::Magenta),
+        Mode::Input => Style::default().fg(Color::Cyan),
         Mode::Normal => {
             if let Some(ref msg) = app.status {
                 match msg.kind {
@@ -83,6 +84,7 @@ fn render_status_bar(frame: &mut Frame, area: Rect, app: &App) {
     let text = match app.mode {
         Mode::Search => format!("Search: {}", app.search_query),
         Mode::Form => "Form mode".to_string(),
+        Mode::Input => format!("Create mount point: {}", app.input_buffer),
         Mode::Normal => {
             app.status
                 .as_ref()
@@ -110,6 +112,7 @@ fn render_help_bar(frame: &mut Frame, area: Rect, app: &App) {
         },
         Mode::Search => "[Esc] Cancel  [Enter] Confirm  type to search",
         Mode::Form => "[Tab] Next field  [Esc] Cancel  [Enter] Confirm",
+        Mode::Input => "[Esc] Cancel  [Enter] Confirm  type mount point path",
     };
 
     let paragraph = Paragraph::new(bindings)

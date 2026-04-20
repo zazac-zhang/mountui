@@ -60,6 +60,13 @@ pub enum Mode {
     Normal,
     Search,
     Form,
+    Input,
+}
+
+/// Purpose of the current Input mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InputAction {
+    CreateMountPoint,
 }
 
 /// Status bar message.
@@ -200,6 +207,8 @@ pub struct App {
     pub status: Option<StatusMessage>,
     pub mount_pending: bool,
     pub form: Option<FormData>,
+    pub input_buffer: String,
+    pub input_action: Option<InputAction>,
     pub disk_usage_cache: HashMap<PathBuf, (DiskUsage, Instant)>,
     bookmarks_path: PathBuf,
 }
@@ -240,6 +249,8 @@ impl App {
             status: None,
             mount_pending: false,
             form: None,
+            input_buffer: String::new(),
+            input_action: None,
             disk_usage_cache: HashMap::new(),
             bookmarks_path,
         }
@@ -259,6 +270,7 @@ impl App {
             Mode::Normal => self.handle_normal_mode(key.code, tx),
             Mode::Search => self.handle_search_mode(key.code),
             Mode::Form => self.handle_form_mode(key.code),
+            Mode::Input => self.handle_input_mode(key.code),
         }
     }
 
@@ -311,6 +323,18 @@ impl App {
                     self.mode = Mode::Form;
                 }
             }
+            KeyCode::Char('c') => {
+                if self.tab == Tab::MountPoints {
+                    self.mode = Mode::Input;
+                    self.input_buffer.clear();
+                    self.input_action = Some(InputAction::CreateMountPoint);
+                }
+            }
+            KeyCode::Char('x') => {
+                if self.tab == Tab::MountPoints {
+                    self.handle_remove_mount_point();
+                }
+            }
             _ => {}
         }
     }
@@ -339,6 +363,71 @@ impl App {
             }
             _ => {}
         }
+    }
+
+    fn handle_input_mode(&mut self, code: crossterm::event::KeyCode) {
+        use crossterm::event::KeyCode;
+        match code {
+            KeyCode::Esc => {
+                self.mode = Mode::Normal;
+                self.input_buffer.clear();
+                self.input_action = None;
+            }
+            KeyCode::Enter => {
+                self.confirm_input();
+            }
+            KeyCode::Backspace => {
+                self.input_buffer.pop();
+            }
+            KeyCode::Char(c) => {
+                self.input_buffer.push(c);
+            }
+            _ => {}
+        }
+    }
+
+    fn confirm_input(&mut self) {
+        let action = self.input_action;
+        match action {
+            Some(InputAction::CreateMountPoint) => {
+                let path = PathBuf::from(self.input_buffer.trim());
+                if path.as_os_str().is_empty() {
+                    self.set_status("Path cannot be empty", StatusKind::Error);
+                    return;
+                }
+                if !path.is_absolute() {
+                    self.set_status("Path must be absolute", StatusKind::Error);
+                    return;
+                }
+                if path.exists() {
+                    self.set_status(
+                        &format!("{} already exists", path.display()),
+                        StatusKind::Error,
+                    );
+                    return;
+                }
+                let adapter = mount::platform_adapter();
+                match adapter.create_mount_point(&path) {
+                    Ok(()) => {
+                        if !self.mount_points.contains(&path) {
+                            self.mount_points.push(path.clone());
+                        }
+                        self.set_status(
+                            &format!("Created mount point: {}", path.display()),
+                            StatusKind::Success,
+                        );
+                    }
+                    Err(e) => {
+                        self.set_status(&format!("Failed to create: {e}"), StatusKind::Error);
+                        return;
+                    }
+                }
+            }
+            None => {}
+        }
+        self.mode = Mode::Normal;
+        self.input_buffer.clear();
+        self.input_action = None;
     }
 
     fn handle_form_mode(&mut self, code: crossterm::event::KeyCode) {
@@ -587,6 +676,55 @@ impl App {
         }
     }
 
+    fn handle_remove_mount_point(&mut self) {
+        let filtered = self.filtered_mount_point_paths();
+        let path = match filtered.get(self.cursor) {
+            Some(p) => p.clone(),
+            None => return,
+        };
+
+        if self.mounts.iter().any(|m| m.mount_point == path) {
+            self.set_status("Cannot remove: mount point is in use", StatusKind::Error);
+            return;
+        }
+
+        if !path.exists() {
+            self.set_status("Directory does not exist", StatusKind::Error);
+            return;
+        }
+
+        match std::fs::read_dir(&path) {
+            Ok(mut entries) => {
+                if entries.next().is_some() {
+                    self.set_status("Cannot remove: directory is not empty", StatusKind::Error);
+                    return;
+                }
+            }
+            Err(e) => {
+                self.set_status(&format!("Cannot read directory: {e}"), StatusKind::Error);
+                return;
+            }
+        }
+
+        match std::fs::remove_dir(&path) {
+            Ok(()) => {
+                self.mount_points.retain(|p| p != &path);
+                self.set_status(
+                    &format!("Removed mount point: {}", path.display()),
+                    StatusKind::Success,
+                );
+                // filtered had len >= 1 (contained path), now len >= 0
+                let new_count = filtered.len().saturating_sub(1);
+                if self.cursor > 0 && self.cursor >= new_count {
+                    self.cursor = self.cursor.saturating_sub(1);
+                }
+            }
+            Err(e) => {
+                self.set_status(&format!("Failed to remove: {e}"), StatusKind::Error);
+            }
+        }
+    }
+
     pub fn set_status(&mut self, text: &str, kind: StatusKind) {
         self.status = Some(StatusMessage {
             text: text.to_string(),
@@ -658,14 +796,43 @@ impl App {
         }
     }
 
+    pub fn filtered_mount_point_paths(&self) -> Vec<PathBuf> {
+        let mut seen = std::collections::HashSet::new();
+        let mut result = Vec::new();
+
+        for m in &self.mounts {
+            if seen.insert(m.mount_point.clone()) {
+                result.push(m.mount_point.clone());
+            }
+        }
+        for b in &self.bookmarks {
+            let mp = PathBuf::from(&b.mount_point);
+            if seen.insert(mp.clone()) {
+                result.push(mp);
+            }
+        }
+        for p in &self.mount_points {
+            if seen.insert(p.clone()) {
+                result.push(p.clone());
+            }
+        }
+
+        if self.search_query.is_empty() {
+            result
+        } else {
+            let q = self.search_query.to_lowercase();
+            result
+                .into_iter()
+                .filter(|p| p.to_string_lossy().to_lowercase().contains(&q))
+                .collect()
+        }
+    }
+
     fn filtered_items_count(&self) -> usize {
         match self.tab {
             Tab::Mounts => self.filtered_mounts().len(),
             Tab::Bookmarks => self.filtered_bookmarks().len(),
-            Tab::MountPoints => {
-                // TODO: filtered mount points
-                self.mount_points.len()
-            }
+            Tab::MountPoints => self.filtered_mount_point_paths().len(),
         }
     }
 
