@@ -50,9 +50,7 @@ impl MountAdapter for MacOsAdapter {
                 .await?;
             if !output2.status.success() {
                 let stderr2 = String::from_utf8_lossy(&output2.stderr);
-                return Err(MountError::UnmountFailed(format!(
-                    "{stderr}\n{stderr2}"
-                )));
+                return Err(MountError::UnmountFailed(format!("{stderr}\n{stderr2}")));
             }
         }
         Ok(())
@@ -83,7 +81,12 @@ fn parse_mount_line(line: &str) -> Option<MountEntry> {
     let (device, rest) = line.split_once(" on ")?;
     let (mount_point, rest) = rest.split_once(" (")?;
     let rest = rest.strip_suffix(')').unwrap_or(rest);
-    let fs_type = rest.split(',').next().unwrap_or("unknown").trim().to_string();
+    let fs_type = rest
+        .split(',')
+        .next()
+        .unwrap_or("unknown")
+        .trim()
+        .to_string();
 
     Some(MountEntry {
         device: device.to_string(),
@@ -111,7 +114,10 @@ fn build_mount_command(bookmark: &Bookmark) -> tokio::process::Command {
         Protocol::Nfs => {
             let mut cmd = tokio::process::Command::new("mount");
             let remote = format!("{}:{}", bookmark.host, bookmark.remote_path);
-            cmd.arg("-t").arg("nfs").arg(&remote).arg(&bookmark.mount_point);
+            cmd.arg("-t")
+                .arg("nfs")
+                .arg(&remote)
+                .arg(&bookmark.mount_point);
             if let Some(ref opts) = bookmark.options {
                 cmd.args(["-o", opts]);
             }
@@ -120,7 +126,10 @@ fn build_mount_command(bookmark: &Bookmark) -> tokio::process::Command {
         Protocol::Smb => {
             let mut cmd = tokio::process::Command::new("mount");
             let remote = format_smb_remote(bookmark);
-            cmd.arg("-t").arg("smbfs").arg(&remote).arg(&bookmark.mount_point);
+            cmd.arg("-t")
+                .arg("smbfs")
+                .arg(&remote)
+                .arg(&bookmark.mount_point);
             if let Some(ref opts) = bookmark.options {
                 cmd.args(["-o", opts]);
             }

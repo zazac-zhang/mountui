@@ -81,7 +81,7 @@ pub enum StatusKind {
 pub struct FormData {
     pub fields: [String; FormField::COUNT],
     pub cursor_field: usize,
-    pub editing: bool,       // true = edit existing, false = add new
+    pub editing: bool,                 // true = edit existing, false = add new
     pub original_name: Option<String>, // for edit mode
 }
 
@@ -89,14 +89,14 @@ impl FormData {
     pub fn new_for_add() -> Self {
         Self {
             fields: [
-                String::new(), // name
+                String::new(),       // name
                 "sshfs".to_string(), // protocol (default)
-                String::new(), // host
-                String::new(), // port
-                String::new(), // remote_path
-                String::new(), // mount_point
-                String::new(), // username
-                String::new(), // options
+                String::new(),       // host
+                String::new(),       // port
+                String::new(),       // remote_path
+                String::new(),       // mount_point
+                String::new(),       // username
+                String::new(),       // options
             ],
             cursor_field: 0,
             editing: false,
@@ -125,7 +125,9 @@ impl FormData {
     pub fn to_bookmark(&self) -> Option<Bookmark> {
         let name = self.fields[FormField::Name as usize].trim().to_string();
         let host = self.fields[FormField::Host as usize].trim().to_string();
-        let mount_point = self.fields[FormField::MountPoint as usize].trim().to_string();
+        let mount_point = self.fields[FormField::MountPoint as usize]
+            .trim()
+            .to_string();
         if name.is_empty() || host.is_empty() || mount_point.is_empty() {
             return None;
         }
@@ -138,7 +140,9 @@ impl FormData {
             .trim()
             .parse::<u16>()
             .ok();
-        let remote_path = self.fields[FormField::RemotePath as usize].trim().to_string();
+        let remote_path = self.fields[FormField::RemotePath as usize]
+            .trim()
+            .to_string();
         let username = {
             let s = self.fields[FormField::Username as usize].trim().to_string();
             if s.is_empty() { None } else { Some(s) }
@@ -204,11 +208,16 @@ pub struct App {
     bookmarks_path: PathBuf,
 }
 
+impl Default for App {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl App {
     pub fn new() -> Self {
-        let bookmarks_path = crate::config::bookmarks_path().unwrap_or_else(|| {
-            PathBuf::from("bookmarks.toml")
-        });
+        let bookmarks_path =
+            crate::config::bookmarks_path().unwrap_or_else(|| PathBuf::from("bookmarks.toml"));
 
         let bookmarks = bookmark::load_bookmarks(&bookmarks_path).unwrap_or_default();
 
@@ -216,10 +225,7 @@ impl App {
         let mounts = adapter.list_mounts().unwrap_or_default();
 
         // Collect mount points from both current mounts and bookmarks
-        let mut mount_points: Vec<PathBuf> = mounts
-            .iter()
-            .map(|m| m.mount_point.clone())
-            .collect();
+        let mut mount_points: Vec<PathBuf> = mounts.iter().map(|m| m.mount_point.clone()).collect();
         for b in &bookmarks {
             let mp = PathBuf::from(&b.mount_point);
             if !mount_points.contains(&mp) {
@@ -394,7 +400,10 @@ impl App {
         let bm = match form_data.to_bookmark() {
             Some(b) => b,
             None => {
-                self.set_status("Name, Host, and Mount Point are required", StatusKind::Error);
+                self.set_status(
+                    "Name, Host, and Mount Point are required",
+                    StatusKind::Error,
+                );
                 self.form = Some(form_data);
                 return;
             }
@@ -402,15 +411,20 @@ impl App {
 
         if form_data.editing {
             // Replace existing bookmark
-            if let Some(pos) = self.bookmarks.iter().position(|b| {
-                Some(&b.name) == form_data.original_name.as_ref()
-            }) {
+            if let Some(pos) = self
+                .bookmarks
+                .iter()
+                .position(|b| Some(&b.name) == form_data.original_name.as_ref())
+            {
                 self.bookmarks[pos] = bm;
             }
         } else {
             // Check for duplicate name
             if self.bookmarks.iter().any(|b| b.name == bm.name) {
-                self.set_status(&format!("Bookmark '{}' already exists", bm.name), StatusKind::Error);
+                self.set_status(
+                    &format!("Bookmark '{}' already exists", bm.name),
+                    StatusKind::Error,
+                );
                 self.form = Some(form_data);
                 return;
             }
@@ -420,9 +434,17 @@ impl App {
         if let Err(e) = bookmark::save_bookmarks(&self.bookmarks_path, &self.bookmarks) {
             self.set_status(&format!("Failed to save: {e}"), StatusKind::Error);
         } else {
-            let action = if form_data.editing { "Updated" } else { "Added" };
+            let action = if form_data.editing {
+                "Updated"
+            } else {
+                "Added"
+            };
             self.set_status(
-                &format!("{} bookmark '{}'", action, self.bookmarks.last().map(|b| b.name.as_str()).unwrap_or("")),
+                &format!(
+                    "{} bookmark '{}'",
+                    action,
+                    self.bookmarks.last().map(|b| b.name.as_str()).unwrap_or("")
+                ),
                 StatusKind::Success,
             );
         }

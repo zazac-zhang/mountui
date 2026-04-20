@@ -36,7 +36,10 @@ pub fn render(frame: &mut Frame, area: Rect, app: &mut App) {
         .map(|(i, mp)| {
             let mounted = app.mounts.iter().any(|m| m.mount_point == mp.path);
             let row_style = if i == app.cursor && app.tab == crate::app::Tab::MountPoints {
-                Style::default().bg(Color::Rgb(0, 90, 90)).fg(Color::White).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .bg(Color::Rgb(0, 90, 90))
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD)
             } else if mounted {
                 Style::default().fg(Color::Green)
             } else {
@@ -128,9 +131,7 @@ fn collect_mount_points(app: &mut App) -> Vec<MountPointInfo> {
     // Apply search filter (path only, consistent with App::filtered_mount_point_paths)
     if !app.search_query.is_empty() {
         let q = app.search_query.to_lowercase();
-        result.retain(|mp| {
-            mp.path.to_string_lossy().to_lowercase().contains(&q)
-        });
+        result.retain(|mp| mp.path.to_string_lossy().to_lowercase().contains(&q));
     }
 
     result

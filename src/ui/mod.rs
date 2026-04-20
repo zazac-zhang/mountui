@@ -1,5 +1,5 @@
-mod mount_list;
 mod bookmark_list;
+mod mount_list;
 mod mount_point;
 
 use ratatui::{
@@ -7,7 +7,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Tabs, Paragraph, Wrap},
+    widgets::{Block, Borders, Paragraph, Tabs, Wrap},
 };
 
 use crate::app::{App, Mode, Tab};
@@ -18,7 +18,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
     let vertical = Layout::vertical([
         Constraint::Length(3), // tabs
-        Constraint::Min(5),   // content
+        Constraint::Min(5),    // content
         Constraint::Length(1), // status bar
         Constraint::Length(1), // help bar
     ]);
@@ -35,7 +35,9 @@ fn render_tabs(frame: &mut Frame, area: Rect, app: &App) {
         .iter()
         .map(|t| {
             let style = if *t == app.tab {
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(Color::DarkGray)
             };
@@ -44,13 +46,13 @@ fn render_tabs(frame: &mut Frame, area: Rect, app: &App) {
         .collect();
 
     let tabs = Tabs::new(titles)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" MountUI "),
-        )
+        .block(Block::default().borders(Borders::ALL).title(" MountUI "))
         .select(app.tab.index())
-        .highlight_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD));
+        .highlight_style(
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        );
 
     frame.render_widget(tabs, area);
 }
@@ -83,12 +85,11 @@ fn render_status_bar(frame: &mut Frame, area: Rect, app: &App) {
     let text = match app.mode {
         Mode::Search => format!("Search: {}", app.search_query),
         Mode::Form => "Form mode".to_string(),
-        Mode::Normal => {
-            app.status
-                .as_ref()
-                .map(|s| s.text.clone())
-                .unwrap_or_default()
-        }
+        Mode::Normal => app
+            .status
+            .as_ref()
+            .map(|s| s.text.clone())
+            .unwrap_or_default(),
     };
 
     let paragraph = Paragraph::new(text).style(style);
@@ -98,15 +99,11 @@ fn render_status_bar(frame: &mut Frame, area: Rect, app: &App) {
 fn render_help_bar(frame: &mut Frame, area: Rect, app: &App) {
     let bindings = match app.mode {
         Mode::Normal => match app.tab {
-            Tab::Mounts => {
-                "[j/k] Navigate  [u]Unmount  [r]Refresh  [/]Search  [1-3] Tab  [q]Quit"
-            }
+            Tab::Mounts => "[j/k] Navigate  [u]Unmount  [r]Refresh  [/]Search  [1-3] Tab  [q]Quit",
             Tab::Bookmarks => {
                 "[j/k] Navigate  [m]Mount  [d]Delete  [a]Add  [e]Edit  [/]Search  [1-3] Tab  [q]Quit"
             }
-            Tab::MountPoints => {
-                "[j/k] Navigate  [x]Remove  [/]Search  [1-3] Tab  [q]Quit"
-            }
+            Tab::MountPoints => "[j/k] Navigate  [x]Remove  [/]Search  [1-3] Tab  [q]Quit",
         },
         Mode::Search => "[Esc] Cancel  [Enter] Confirm  type to search",
         Mode::Form => "[Tab] Next field  [Esc] Cancel  [Enter] Confirm",

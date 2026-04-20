@@ -97,7 +97,10 @@ fn build_mount_command(bookmark: &Bookmark) -> tokio::process::Command {
         }
         Protocol::Nfs => {
             let remote = format!("{}:{}", bookmark.host, bookmark.remote_path);
-            cmd.arg("-t").arg("nfs").arg(&remote).arg(&bookmark.mount_point);
+            cmd.arg("-t")
+                .arg("nfs")
+                .arg(&remote)
+                .arg(&bookmark.mount_point);
             if let Some(ref opts) = bookmark.options {
                 cmd.args(["-o", opts]);
             }
@@ -126,8 +129,9 @@ fn build_mount_command(bookmark: &Bookmark) -> tokio::process::Command {
 fn parse_df_output(text: &str) -> Result<DiskUsage> {
     let mut lines = text.lines();
     lines.next(); // skip header
-    let data_line =
-        lines.next().ok_or_else(|| MountError::Parse("no data line in df output".into()))?;
+    let data_line = lines
+        .next()
+        .ok_or_else(|| MountError::Parse("no data line in df output".into()))?;
     let fields: Vec<&str> = data_line.split_whitespace().collect();
     if fields.len() < 4 {
         return Err(MountError::Parse("unexpected df output format".into()));

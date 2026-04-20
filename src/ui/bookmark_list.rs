@@ -46,7 +46,10 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
         .map(|(i, bm)| {
             let mounted = app.is_bookmark_mounted(bm);
             let row_style = if i == app.cursor && app.tab == crate::app::Tab::Bookmarks {
-                Style::default().bg(Color::Rgb(0, 90, 90)).fg(Color::White).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .bg(Color::Rgb(0, 90, 90))
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD)
             } else if mounted {
                 Style::default().fg(Color::Green)
             } else {
@@ -107,7 +110,9 @@ fn render_form(frame: &mut Frame, area: Rect, app: &App) {
             let is_active = i == form.cursor_field;
 
             let label_style = if is_active {
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(Color::White)
             };

@@ -7,7 +7,14 @@ use ratatui::{
 
 use crate::app::App;
 
-const REMOTE_FS_TYPES: &[&str] = &["nfs", "sshfs", "smbfs", "cifs", "fuse.sshfs", "fuse.osxfuse"];
+const REMOTE_FS_TYPES: &[&str] = &[
+    "nfs",
+    "sshfs",
+    "smbfs",
+    "cifs",
+    "fuse.sshfs",
+    "fuse.osxfuse",
+];
 
 pub fn render(frame: &mut Frame, area: Rect, app: &App) {
     let filtered = app.filtered_mounts();
@@ -40,7 +47,10 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
         .map(|(i, entry)| {
             let is_remote = REMOTE_FS_TYPES.contains(&entry.fs_type.as_str());
             let row_style = if i == app.cursor && app.tab == crate::app::Tab::Mounts {
-                Style::default().bg(Color::Rgb(0, 90, 90)).fg(Color::White).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .bg(Color::Rgb(0, 90, 90))
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD)
             } else if is_remote {
                 Style::default().fg(Color::Yellow)
             } else {

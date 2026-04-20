@@ -8,9 +8,9 @@ use std::io;
 
 use crossterm::{
     event::{self, Event},
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{prelude::CrosstermBackend, Terminal};
+use ratatui::{Terminal, prelude::CrosstermBackend};
 
 use app::App;
 
@@ -36,10 +36,7 @@ fn main() -> io::Result<()> {
     result
 }
 
-fn run(
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-    app: &mut App,
-) -> io::Result<()> {
+fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App) -> io::Result<()> {
     let (tx, rx) = std::sync::mpsc::channel::<app::AsyncResult>();
 
     while app.running {
