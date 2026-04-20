@@ -60,13 +60,6 @@ pub enum Mode {
     Normal,
     Search,
     Form,
-    Input,
-}
-
-/// Purpose of the current Input mode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum InputAction {
-    CreateMountPoint,
 }
 
 /// Status bar message.
@@ -207,8 +200,6 @@ pub struct App {
     pub status: Option<StatusMessage>,
     pub mount_pending: bool,
     pub form: Option<FormData>,
-    pub input_buffer: String,
-    pub input_action: Option<InputAction>,
     pub disk_usage_cache: HashMap<PathBuf, (DiskUsage, Instant)>,
     bookmarks_path: PathBuf,
 }
@@ -249,8 +240,6 @@ impl App {
             status: None,
             mount_pending: false,
             form: None,
-            input_buffer: String::new(),
-            input_action: None,
             disk_usage_cache: HashMap::new(),
             bookmarks_path,
         }
@@ -270,7 +259,6 @@ impl App {
             Mode::Normal => self.handle_normal_mode(key.code, tx),
             Mode::Search => self.handle_search_mode(key.code),
             Mode::Form => self.handle_form_mode(key.code),
-            Mode::Input => self.handle_input_mode(key.code),
         }
     }
 
@@ -323,13 +311,6 @@ impl App {
                     self.mode = Mode::Form;
                 }
             }
-            KeyCode::Char('c') => {
-                if self.tab == Tab::MountPoints {
-                    self.mode = Mode::Input;
-                    self.input_buffer.clear();
-                    self.input_action = Some(InputAction::CreateMountPoint);
-                }
-            }
             KeyCode::Char('x') => {
                 if self.tab == Tab::MountPoints {
                     self.handle_remove_mount_point();
@@ -363,71 +344,6 @@ impl App {
             }
             _ => {}
         }
-    }
-
-    fn handle_input_mode(&mut self, code: crossterm::event::KeyCode) {
-        use crossterm::event::KeyCode;
-        match code {
-            KeyCode::Esc => {
-                self.mode = Mode::Normal;
-                self.input_buffer.clear();
-                self.input_action = None;
-            }
-            KeyCode::Enter => {
-                self.confirm_input();
-            }
-            KeyCode::Backspace => {
-                self.input_buffer.pop();
-            }
-            KeyCode::Char(c) => {
-                self.input_buffer.push(c);
-            }
-            _ => {}
-        }
-    }
-
-    fn confirm_input(&mut self) {
-        let action = self.input_action;
-        match action {
-            Some(InputAction::CreateMountPoint) => {
-                let path = PathBuf::from(self.input_buffer.trim());
-                if path.as_os_str().is_empty() {
-                    self.set_status("Path cannot be empty", StatusKind::Error);
-                    return;
-                }
-                if !path.is_absolute() {
-                    self.set_status("Path must be absolute", StatusKind::Error);
-                    return;
-                }
-                if path.exists() {
-                    self.set_status(
-                        &format!("{} already exists", path.display()),
-                        StatusKind::Error,
-                    );
-                    return;
-                }
-                let adapter = mount::platform_adapter();
-                match adapter.create_mount_point(&path) {
-                    Ok(()) => {
-                        if !self.mount_points.contains(&path) {
-                            self.mount_points.push(path.clone());
-                        }
-                        self.set_status(
-                            &format!("Created mount point: {}", path.display()),
-                            StatusKind::Success,
-                        );
-                    }
-                    Err(e) => {
-                        self.set_status(&format!("Failed to create: {e}"), StatusKind::Error);
-                        return;
-                    }
-                }
-            }
-            None => {}
-        }
-        self.mode = Mode::Normal;
-        self.input_buffer.clear();
-        self.input_action = None;
     }
 
     fn handle_form_mode(&mut self, code: crossterm::event::KeyCode) {
