@@ -6,6 +6,7 @@ pub mod ui;
 
 use std::io;
 
+use clap::Parser;
 use crossterm::{
     event::{self, Event},
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
@@ -14,7 +15,14 @@ use ratatui::{Terminal, prelude::CrosstermBackend};
 
 use app::App;
 
+
+#[derive(Parser)]
+#[command(name = "mountui", version, about = "TUI filesystem mount manager")]
+struct Cli {}
+
 fn main() -> io::Result<()> {
+    Cli::parse();
+
     // Create tokio runtime for async mount operations
     let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
     let _guard = rt.enter();

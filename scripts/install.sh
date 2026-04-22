@@ -4,7 +4,7 @@ set -euo pipefail
 # MountUI curl install script
 # Usage: curl -fsSL https://raw.githubusercontent.com/USER/mountui/main/scripts/install.sh | bash
 
-REPO="pony/mountui"
+REPO="zazac-zhang/mountui"
 BIN_NAME="mountui"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 GITHUB_API="https://api.github.com/repos/${REPO}/releases"
