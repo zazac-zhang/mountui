@@ -317,10 +317,8 @@ impl App {
                     self.mode = Mode::Form;
                 }
             }
-            KeyCode::Char('x') => {
-                if self.tab == Tab::MountPoints {
-                    self.handle_remove_mount_point();
-                }
+            KeyCode::Char('x') if self.tab == Tab::MountPoints => {
+                self.handle_remove_mount_point();
             }
             _ => {}
         }
