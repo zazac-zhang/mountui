@@ -22,7 +22,7 @@ impl MountAdapter for LinuxAdapter {
     }
 
     async fn mount(&self, bookmark: &Bookmark) -> Result<()> {
-        let cmd = build_mount_command(bookmark);
+        let mut cmd = build_mount_command(bookmark);
         let output = cmd.output().await?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
